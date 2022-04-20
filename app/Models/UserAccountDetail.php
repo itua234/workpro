@@ -15,4 +15,9 @@ class UserAccountDetail extends Model
         'bank_id',
         'account_number'
     ];
+
+    protected $hidden = [
+        'created_at',
+        'updated_at'
+    ];
 }

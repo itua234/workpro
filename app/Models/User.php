@@ -69,4 +69,12 @@ class User extends Authenticatable
     {
         $this->attributes['lastname'] = ucwords(strtolower($lastname));
     }
+
+    public function wallet(){
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function account_detail(){
+        return $this->hasOne(UserAccountDetail::class);
+    }
 }

@@ -2,12 +2,15 @@
 
 namespace App\Interfaces;
 
-
+use Illuminate\Http\Request;
 use App\Http\Requests\
 {
     LoginRequest,
     RegisterUserRequest,
-    resetPasswordRequest
+    ResetPasswordRequest,
+    PasswordResetRequest,
+    VerifyResetPasswordTokenRequest,
+    ChangePasswordRequest
 };
 
 interface IAuthInterface
@@ -18,13 +21,17 @@ interface IAuthInterface
 
     public function logout();
 
-    public function refresh();
-
-    public function resetPassword(resetPasswordRequest $request);
+    public function refresh(Request $request);
 
     public function sendverificationcode($id);
 
     public function verifyUser($verification_code);
 
-    //public function verifyResetPasswordToken();
+    public function resetPassword(ResetPasswordRequest $request);
+
+    public function verifyResetPasswordToken(VerifyResetPasswordTokenRequest $request);
+
+    public function password_reset(PasswordResetRequest $request);
+
+    public function change_password(ChangePasswordRequest $request);
 }

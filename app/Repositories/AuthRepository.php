@@ -2,18 +2,34 @@
 
 namespace App\Repositories;
 
-
 use Carbon\Carbon;
-use App\Models\User;
+use App\Models\
+{   User,
+    Wallet
+};
 use App\Traits\ResponseApi;
-use App\Mail\verifyAccountMail;
-use App\Mail\ForgetPasswordMail;
+
+use App\Mail\
+{
+    verifyAccountMail,
+    ForgetPasswordMail
+};
 use App\Interfaces\IAuthInterface;
-use Illuminate\Support\Facades\DB;
-use App\Http\Requests\LoginRequest;
-use Illuminate\Support\Facades\Mail;
-use App\Http\Requests\RegisterUserRequest;
-use App\Http\Requests\resetPasswordRequest;
+use Illuminate\Support\Facades\{
+    DB,
+    Mail,
+    Hash
+};
+use Illuminate\Http\Request;
+use App\Http\Requests\
+{
+    LoginRequest,
+    RegisterUserRequest,
+    ResetPasswordRequest,
+    PasswordResetRequest,
+    VerifyResetPasswordTokenRequest,
+    ChangePasswordRequest
+};
 
 class AuthRepository implements IAuthInterface
 {
@@ -29,9 +45,9 @@ class AuthRepository implements IAuthInterface
                 'phone' => $request->phone,
                 'password' => $request->password
             ]);
-            /*$wallet = Wallet::create([
-                'id' => $user->id
-            ]);*/
+            $wallet = Wallet::create([
+                'user_id' => $user->id
+            ]);
 
             $fullname = $user->firstname." ".$user->lastname;
             $code = mt_rand(1000, 9999);
@@ -39,10 +55,10 @@ class AuthRepository implements IAuthInterface
             DB::table('user_verification')->insert(['user_id' => $user->id, 'code' => $code, 'expiry_time' => $expiry_time]);
 
             $data = ['name' => $fullname, 'code' => $code];
-            Mail::to($request->email)->send(new verifyAccountMail($data));
+            //Mail::to($user->email)->send(new verifyAccountMail($data));
         }catch(\Exception $e){
             $message = $e->getMessage();
-            return $this->error($message, 500);
+            return $this->error($message, $e->getCode());
         }
         $message = 'Thanks for signing up! Please check your email to complete your registration.';
         return $this->success($message, $user, 201);
@@ -63,18 +79,25 @@ class AuthRepository implements IAuthInterface
         $token = $user->createToken("workpro")->plainTextToken;
         $user->token = $token;
         $message = 'Login successfully';
-        return $this->success($message, $user, 200);
+        return $this->success($message, $user);
     }
 
     public function logout()
     {
         auth()->user()->tokens()->delete();
-        return $this->success("user logout", null, 200);
+
+        return $this->success("user logout", null);
     }
 
-    public function refresh()
+    public function refresh(Request $request)
     {
+        $user = auth()->user();
 
+        $user->tokens()->delete();
+
+        $token = $user->createToken("workpro")->plainTextToken;
+
+        return $this->success("token refreshed successfully", $token);
     }
 
     public function sendverificationcode($id)
@@ -91,7 +114,7 @@ class AuthRepository implements IAuthInterface
             Mail::to($user->email)->send(new verifyAccountMail($data));
         }catch(\Exception $e){
             $message = $e->getMessage();
-            return $this->error($message);
+            return $this->error($message, $e->getCode());
         }
         $message = 'A new verification code has been sent to your email.';
         return $this->success($message, null);
@@ -114,45 +137,42 @@ class AuthRepository implements IAuthInterface
         return $this->error($message, 400);
     }
 
-    public function resetPassword(resetPasswordRequest $request)
+    public function resetPassword(ResetPasswordRequest $request)
     {
         $user = User::where('email', $request->email)->first();
         $check = DB::table('password_resets')->where('email', $request->email)->first();
+
         $fullname = $user->firstname." ".$user->lastname;
         $reset_token = mt_rand(1000, 9999);
         $timestamp = Carbon::now()->addMinutes(6);
         $data = ['name' => $fullname, 'token' => $reset_token];
-        if(!is_null($check)):
-            try{
-                if($check->created_at > Carbon::now()):
-                    $message = 'Your token has already been sent.';
-                endif;
-                DB::table('password_resets')->update(['token' => $reset_token, 'created_at' => $timestamp]);
-                //Mail::to($request->email)->send(new ForgetPasswordMail($data));
-                $message = 'A new reset email has been sent! Please check your email.';
-            }catch(\Exception $e){
-                $error_message = $e->getMessage();
-                return $this->error($error_message);
-            }
-            return $this->success($message, null);
-        endif;
-        
+
         try{
-            DB::table('password_resets')->insert(['email' => $request->email, 'token' => $reset_token, 'created_at' => $timestamp]);
-            //Mail::to($request->email)->send(new ForgetPasswordMail($data));
-            $message = 'A reset email has been sent! Please check your email.';
+            switch(is_null($check)):
+                case(false):
+                    if($check->created_at > Carbon::now()):
+                        $message = 'Your token has already been sent.';
+                    else:
+                        DB::table('password_resets')->update(['token' => $reset_token, 'created_at' => $timestamp]);
+                        //Mail::to($request->email)->send(new ForgetPasswordMail($data));
+                        $message = 'A new reset email has been sent! Please check your email.';
+                    endif;
+                break;
+            default:
+                DB::table('password_resets')->insert(['email' => $request->email, 'token' => $reset_token, 'created_at' => $timestamp]);
+                //Mail::to($request->email)->send(new ForgetPasswordMail($data));
+                $message = 'A reset email has been sent! Please check your email.';
+            endswitch;
         }catch(\Exception $e){
             $error_message = $e->getMessage();
-            return $this->error($error_message);
+            return $this->error($error_message, $e->getCode());
         }
         return $this->success($message, null);
     }
 
-    /*public function verifyResetPasswordToken()
+    public function verifyResetPasswordToken(VerifyResetPasswordTokenRequest $request)
     {
-        $token = $request->token;
-        $email = $request->email;
-        $check = DB::table('password_resets')->where(['token' => $token, 'email' => $email])->first();
+        $check = DB::table('password_resets')->where(['token' => $request->token, 'email' => $request->email])->first();
         $timestamp = Carbon::now();
         if(!is_null($check)):
             if($check->created_at > $timestamp):
@@ -163,18 +183,47 @@ class AuthRepository implements IAuthInterface
             return $this->error($message, 400);
         endif;
 
-        $message = "Password reset token is invalid.";
+        $message = "Invalid data.";
         return $this->error($message, 400);
     }
 
-    public function password_reset(Request $request)
+    public function password_reset(PasswordResetRequest $request)
     {   
-        $timestamp = Carbon::now();
-        User::where('email', $request->email)->update(['password' => $request->password, 'updated_at' => $timestamp]);
-        DB::table('password_resets')->where(['email' => $request->email])->delete();
-    
-        $message = 'Your password has been changed!';
-        return $this->success($message, null);
-    }*/
+        try{
+            $user = User::where('email', $request->email)->first();
+            $user->password = $request->password;
+            $user->save();
+            DB::table('password_resets')->where(['email' => $request->email])->delete();
+            $message = 'Your password has been changed!';
+        }catch(\Exception $e){
+            $error_message = $e->getMessage();
+            return $this->error($error_message, $e->getCode());
+        }
 
+        return $this->success($message, null);
+    }
+
+    public function change_password(ChangePasswordRequest $request)
+    {
+        $user = auth()->user();
+        try{
+            if((Hash::check($request->old_password, $user->password)) == false):
+                $message = "Check your old password.";
+                $status_code = 400;
+            elseif((Hash::check($request->new_password, $user->password)) == true):
+                $message = "Please enter a password which is not similar to your current password.";
+                $status_code = 400;
+            else:
+                $user->password = $request->new_password;
+                $user->save();
+                $message = "Your password has been changed successfully";
+                $status_code = 200;
+            endif;
+        }catch(\Exception $e){
+            $error_message = $e->getMessage();
+            return $this->error($error_message, $e->getCode());
+        }
+        
+        return $this->success($message, null, $status_code);
+    }
 }

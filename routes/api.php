@@ -2,7 +2,12 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\
+{
+    AuthController,
+    ProfileController,
+    WalletController
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -29,10 +34,30 @@ Route::get("/verify/{verification_code}", [AuthController::class, "verifyUser"])
 
 Route::post("/reset", [AuthController::class, "resetPassword"]);
 
-Route::get("/verify/reset/token/", [AuthController::class, "verifyResetPasswordToken"]);
+Route::post("/verify/reset/token/", [AuthController::class, "verifyResetPasswordToken"]);
+
+Route::post("/password-reset", [AuthController::class, "password_reset"]);
 
 //protected route using Laravel Sanctum
 Route::group(['middleware' => ['auth:sanctum']],function(){
     Route::post("/logout", [AuthController::class, "logout"]);
+
+    Route::post("/refresh", [AuthController::class, "refresh"]);
+
+    Route::post("/change-password", [AuthController::class, "change_password"]);
+
+    
+
+
+    Route::post("/delete", [ProfileController::class, "delete"]);
+
+    Route::post("/save-account-details", [ProfileController::class, "saveAccountDetails"]);
+    
+    Route::post("/save-next-of-kin-details", [ProfileController::class, "saveNextOfKinDetails"]);
+
+
+
+
+    Route::post("/getwallet", [WalletController::class, "getWallet"]);
 });
 

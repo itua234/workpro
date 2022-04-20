@@ -17,6 +17,16 @@ class RepositoryServiceProvider extends ServiceProvider
             'App\Interfaces\IAuthInterface',
             'App\Repositories\AuthRepository'
         );
+
+        $this->app->bind(
+            'App\Interfaces\IProfileInterface',
+            'App\Repositories\ProfileRepository'
+        );
+
+        $this->app->bind(
+            'App\Interfaces\IWalletInterface',
+            'App\Repositories\WalletRepository'
+        );
     }
 
     /**

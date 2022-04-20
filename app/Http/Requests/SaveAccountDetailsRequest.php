@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ResetPasswordRequest extends FormRequest
+class SaveAccountDetailsRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,7 +24,9 @@ class ResetPasswordRequest extends FormRequest
     public function rules()
     {
         return [
-            'email'   =>  'required|email|exists:users',
+            'bank_id' => 'required',
+            
+            'account_number' => 'required'
         ];
     }
 }

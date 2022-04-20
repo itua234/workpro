@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Interfaces\IAuthInterface;
-use App\Http\Requests\LoginRequest;
-use App\Http\Requests\RegisterUserRequest;
-use App\Http\Requests\resetPasswordRequest;
+use Illuminate\Http\Request;
+use App\Http\Requests\
+{
+    LoginRequest,
+    RegisterUserRequest,
+    ResetPasswordRequest,
+    PasswordResetRequest,
+    VerifyResetPasswordTokenRequest,
+    ChangePasswordRequest
+};
 
 
 class AuthController extends Controller
@@ -33,6 +39,11 @@ class AuthController extends Controller
         return $this->authInterface->logout();
     }
 
+    public function refresh(Request $request)
+    {
+        return $this->authInterface->refresh($request);
+    }
+
     public function sendcode($id)
     {
         return $this->authInterface->sendverificationcode($id);
@@ -43,14 +54,24 @@ class AuthController extends Controller
         return $this->authInterface->verifyUser($verification_code);
     }
 
-    public function resetPassword(resetPasswordRequest $request)
+    public function resetPassword(ResetPasswordRequest $request)
     {
         return $this->authInterface->resetPassword($request);
     }
 
-    /*public function verifyResetPasswordToken(Request $request)
+    public function verifyResetPasswordToken(VerifyResetPasswordTokenRequest $request)
     {
         return $this->authInterface->verifyResetPasswordToken($request);
-    }*/
+    }
+
+    public function password_reset(PasswordResetRequest $request)
+    {
+        return $this->authInterface->password_reset($request);
+    }
+
+    public function change_password(ChangePasswordRequest $request)
+    {
+        return $this->authInterface->change_password($request);
+    }
 
 }
