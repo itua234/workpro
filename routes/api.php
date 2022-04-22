@@ -28,9 +28,9 @@ Route::post("/register", [AuthController::class, "store"]);
 
 Route::post("/login", [AuthController::class, "login"]);
 
-Route::get("/sendcode/{id}", [AuthController::class, "sendcode"]);
+Route::get("/sendcode/{email}", [AuthController::class, "sendcode"]);
 
-Route::get("/verify/{verification_code}", [AuthController::class, "verifyUser"]);
+Route::post("/verify/code", [AuthController::class, "verifyUser"]);
 
 Route::post("/reset", [AuthController::class, "resetPassword"]);
 

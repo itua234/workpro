@@ -39,7 +39,6 @@ class ProfileRepository implements IProfileInterface
                     'account_number' => $request->account_number,
                 ]);
                 $message = 'Next Of Kin Details Submitted Successfully';
-                return $this->success($message, null);
             break;
             default:
                 UserAccountDetail::where('user_id', $user->id)->update([
@@ -47,8 +46,8 @@ class ProfileRepository implements IProfileInterface
                     'account_number' => $request->account_number,
                 ]);
                 $message = 'Next Of Kin Details updated Successfully';
-                return $this->success($message, null);
         endswitch;
+        return $this->success($message, null);
     }
 
     public function saveNextOfKinDetails(SaveNextOfKinDetailsRequest $request)

@@ -7,6 +7,7 @@ use App\Http\Requests\
 {
     LoginRequest,
     RegisterUserRequest,
+    VerifyAccountCodeRequest,
     ResetPasswordRequest,
     PasswordResetRequest,
     VerifyResetPasswordTokenRequest,
@@ -21,11 +22,11 @@ interface IAuthInterface
 
     public function logout();
 
-    public function refresh(Request $request);
+    public function refresh();
 
-    public function sendverificationcode($id);
+    public function sendverificationcode($email);
 
-    public function verifyUser($verification_code);
+    public function verifyUser(VerifyAccountCodeRequest $request);
 
     public function resetPassword(ResetPasswordRequest $request);
 

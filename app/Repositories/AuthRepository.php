@@ -25,6 +25,7 @@ use App\Http\Requests\
 {
     LoginRequest,
     RegisterUserRequest,
+    VerifyAccountCodeRequest,
     ResetPasswordRequest,
     PasswordResetRequest,
     VerifyResetPasswordTokenRequest,
@@ -52,14 +53,15 @@ class AuthRepository implements IAuthInterface
             $fullname = $user->firstname." ".$user->lastname;
             $code = mt_rand(1000, 9999);
             $expiry_time = Carbon::now()->addMinutes(6);
-            DB::table('user_verification')->insert(['user_id' => $user->id, 'code' => $code, 'expiry_time' => $expiry_time]);
+            DB::table('user_verification')->insert(['email' => $user->email, 'code' => $code, 'expiry_time' => $expiry_time]);
 
             $data = ['name' => $fullname, 'code' => $code];
             //Mail::to($user->email)->send(new verifyAccountMail($data));
         }catch(\Exception $e){
             $message = $e->getMessage();
-            return $this->error($message, $e->getCode());
+            return $this->error($message);
         }
+
         $message = 'Thanks for signing up! Please check your email to complete your registration.';
         return $this->success($message, $user, 201);
     }
@@ -89,7 +91,7 @@ class AuthRepository implements IAuthInterface
         return $this->success("user logout", null);
     }
 
-    public function refresh(Request $request)
+    public function refresh()
     {
         $user = auth()->user();
 
@@ -100,9 +102,9 @@ class AuthRepository implements IAuthInterface
         return $this->success("token refreshed successfully", $token);
     }
 
-    public function sendverificationcode($id)
+    public function sendverificationcode($email)
     {
-        $user = User::where("id", $id)->first();
+        $user = User::where('email', $email)->first();
 
         try{
             $fullname = $user->firstname." ".$user->lastname;
@@ -111,29 +113,42 @@ class AuthRepository implements IAuthInterface
             DB::table('user_verification')->update(['code' => $code, 'expiry_time' => $expiry_time]);
 
             $data = ['name' => $fullname, 'code' => $code];
-            Mail::to($user->email)->send(new verifyAccountMail($data));
+            //Mail::to($user->email)->send(new verifyAccountMail($data));
         }catch(\Exception $e){
             $message = $e->getMessage();
-            return $this->error($message, $e->getCode());
+            return $this->error($message);
         }
+
         $message = 'A new verification code has been sent to your email.';
         return $this->success($message, null);
     }
 
-    public function verifyUser($verification_code)
+    public function verifyUser(VerifyAccountCodeRequest $request)
     {
-        $check = DB::table('user_verification')->where('code', $verification_code)->first();
-        if(!is_null($check)):
-            $user = User::find($check->user_id);
-            $current_time = Carbon::now();
-            User::where('id', $user->id)->update(['is_verified' => 1, 'email_verified_at' => $current_time]);
-            DB::table('user_verification')->where('code', $verification_code)->delete();
+        $check = DB::table('user_verification')->where(['email' => $request->email, 'code' => $request->code])->first();
+        $current_time = Carbon::now();
+        try{
+            switch(is_null($check)):
+                case(false):
+                    if($check->expiry_time < $current_time):
+                        $message = 'Verification code is expired';
+                    else:
+                        $user = User::where('email', $check->email)->first();
+                        User::where('id', $user->id)->update(['is_verified' => 1, 'email_verified_at' => $current_time]);
+                        DB::table('user_verification')->where('code', $request->code)->delete();
 
-            $message = 'Your email address is verified successfully.';
-            return $this->success($message, null);
-        endif;
+                        $message = 'Your email address is verified successfully.';
+                        return $this->success($message, null);
+                    endif;
+                break;
+                default:
+                    $message = "Verification code is invalid.";
+            endswitch;
+        }catch(\Exception $e){
+            $error_message = $e->getMessage();
+            return $this->error($error_message);
+        }
 
-        $message = "Verification code is invalid.";
         return $this->error($message, 400);
     }
 
@@ -152,6 +167,7 @@ class AuthRepository implements IAuthInterface
                 case(false):
                     if($check->created_at > Carbon::now()):
                         $message = 'Your token has already been sent.';
+                        return $this->error($message, 400);
                     else:
                         DB::table('password_resets')->update(['token' => $reset_token, 'created_at' => $timestamp]);
                         //Mail::to($request->email)->send(new ForgetPasswordMail($data));
@@ -165,8 +181,9 @@ class AuthRepository implements IAuthInterface
             endswitch;
         }catch(\Exception $e){
             $error_message = $e->getMessage();
-            return $this->error($error_message, $e->getCode());
+            return $this->error($error_message);
         }
+
         return $this->success($message, null);
     }
 
@@ -178,12 +195,13 @@ class AuthRepository implements IAuthInterface
             if($check->created_at > $timestamp):
                 $message = 'Your token verification was successful.';
                 return $this->success($message, $check);
+            else:
+                $message = "Password reset token is expired.";
             endif;
-            $message = "Password reset token is expired.";
-            return $this->error($message, 400);
+        else:
+            $message = "Invalid data.";
         endif;
 
-        $message = "Invalid data.";
         return $this->error($message, 400);
     }
 
@@ -197,7 +215,7 @@ class AuthRepository implements IAuthInterface
             $message = 'Your password has been changed!';
         }catch(\Exception $e){
             $error_message = $e->getMessage();
-            return $this->error($error_message, $e->getCode());
+            return $this->error($error_message);
         }
 
         return $this->success($message, null);
@@ -209,21 +227,19 @@ class AuthRepository implements IAuthInterface
         try{
             if((Hash::check($request->old_password, $user->password)) == false):
                 $message = "Check your old password.";
-                $status_code = 400;
             elseif((Hash::check($request->new_password, $user->password)) == true):
                 $message = "Please enter a password which is not similar to your current password.";
-                $status_code = 400;
             else:
                 $user->password = $request->new_password;
                 $user->save();
                 $message = "Your password has been changed successfully";
-                $status_code = 200;
+                return $this->success($message, null);
             endif;
         }catch(\Exception $e){
             $error_message = $e->getMessage();
-            return $this->error($error_message, $e->getCode());
+            return $this->error($error_message);
         }
         
-        return $this->success($message, null, $status_code);
+        return $this->error($message, 400);
     }
 }

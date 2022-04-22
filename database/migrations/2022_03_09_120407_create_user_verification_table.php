@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('user_verification', function (Blueprint $table) {
             $table->id();
             $table->integer("code");
-            $table->unsignedInteger('user_id')->unique();
+            $table->string('email')->unique();
             $table->timestamp('expiry_time');
         });
     }

@@ -8,6 +8,7 @@ use App\Http\Requests\
 {
     LoginRequest,
     RegisterUserRequest,
+    VerifyAccountCodeRequest,
     ResetPasswordRequest,
     PasswordResetRequest,
     VerifyResetPasswordTokenRequest,
@@ -39,19 +40,19 @@ class AuthController extends Controller
         return $this->authInterface->logout();
     }
 
-    public function refresh(Request $request)
+    public function refresh()
     {
-        return $this->authInterface->refresh($request);
+        return $this->authInterface->refresh();
     }
 
-    public function sendcode($id)
+    public function sendcode($email)
     {
-        return $this->authInterface->sendverificationcode($id);
+        return $this->authInterface->sendverificationcode($email);
     }
 
-    public function verifyUser($verification_code)
+    public function verifyUser(VerifyAccountCodeRequest $request)
     {
-        return $this->authInterface->verifyUser($verification_code);
+        return $this->authInterface->verifyUser($request);
     }
 
     public function resetPassword(ResetPasswordRequest $request)
